@@ -10,9 +10,11 @@ interface Album {
   id: string;
   title: string;
   artist: string | null;
+  catalog_number?: string | null;
   cover_url: string | null;
   release_year?: string | number | null;
   label?: string | null;
+  styles?: string[];
 }
 
 export default function ColeccionScreen({ user }: { user: User }) {
@@ -20,7 +22,7 @@ export default function ColeccionScreen({ user }: { user: User }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'recent' | 'year' | 'label' | 'title'>('recent');
+  const [sortBy, setSortBy] = useState<'recent' | 'year' | 'label' | 'title' | 'artist' | 'style'>('recent');
   const [modalVisible, setModalVisible] = useState(false);
 
   const sortOptions = [
@@ -28,6 +30,8 @@ export default function ColeccionScreen({ user }: { user: User }) {
     { label: 'Año', value: 'year' },
     { label: 'Sello', value: 'label' },
     { label: 'Título', value: 'title' },
+    { label: 'Artista', value: 'artist' },
+    { label: 'Estilo', value: 'style' },
   ];
 
   const handleOpenSort = () => {
@@ -49,7 +53,7 @@ export default function ColeccionScreen({ user }: { user: User }) {
     }
   };
 
-  const handleSelectSort = (value: 'recent' | 'year' | 'label' | 'title') => {
+  const handleSelectSort = (value: 'recent' | 'year' | 'label' | 'title' | 'artist' | 'style') => {
     setSortBy(value);
     setModalVisible(false);
   };
@@ -62,13 +66,17 @@ export default function ColeccionScreen({ user }: { user: User }) {
         const { data, error: queryError } = await supabase
           .from('user_collection')
           .select(`
-            albums!inner (
+            albums!inner(
               id,
               title,
               artist,
               cover_url,
               release_year,
-              label
+              label,
+              catalog_number,
+              album_styles(
+                styles(name)
+              )
             )
           `)
           .eq('user_id', user.id)
@@ -81,8 +89,10 @@ export default function ColeccionScreen({ user }: { user: User }) {
           title: item.albums.title,
           artist: item.albums.artist,
           cover_url: item.albums.cover_url,
+          catalog_number: item.albums.catalog_number || item.albums.catalog_no,
           release_year: item.albums.release_year,
           label: item.albums.label,
+          styles: item.albums.album_styles?.map((s: any) => s.styles.name) || []
         }));
         setAlbums(processedAlbums);
       } catch (err: any) {
@@ -133,8 +143,6 @@ export default function ColeccionScreen({ user }: { user: User }) {
   // Ordenar según el criterio seleccionado
   filteredAlbums = filteredAlbums.sort((a, b) => {
     if (sortBy === 'recent') {
-      // Por defecto: orden de agregado (más reciente primero)
-      // No tenemos 'added_at', así que usamos el orden original (ya viene ordenado por agregado)
       return 0;
     }
     if (sortBy === 'year') {
@@ -145,8 +153,19 @@ export default function ColeccionScreen({ user }: { user: User }) {
     if (sortBy === 'label') {
       return (a.label || '').localeCompare(b.label || '');
     }
-    // Por defecto, título
-    return a.title.localeCompare(b.title);
+    if (sortBy === 'title') {
+      return a.title.localeCompare(b.title);
+    }
+    if (sortBy === 'artist') {
+      return (a.artist || '').localeCompare(b.artist || '');
+    }
+    if (sortBy === 'style') {
+      // Ordenar por el primer estilo del array (si existe)
+      const aStyle = Array.isArray(a.styles) && a.styles.length > 0 ? a.styles[0] : '';
+      const bStyle = Array.isArray(b.styles) && b.styles.length > 0 ? b.styles[0] : '';
+      return aStyle.localeCompare(bStyle);
+    }
+    return 0;
   });
 
   return (
@@ -216,6 +235,7 @@ export default function ColeccionScreen({ user }: { user: User }) {
               <Text style={styles.albumTitle}>{item.title}</Text>
               <Text style={styles.albumArtist}>{item.artist || 'Artista desconocido'}</Text>
               <Text style={styles.albumInfo}>{item.label || 'Sello desconocido'} • {item.release_year || 'Año desconocido'}</Text>
+              <Text style={styles.albumCatalog}>{item.catalog_number || 'Nº catálogo desconocido'}</Text>
             </View>
           </View>
         )}
@@ -257,6 +277,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   albumInfo: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  albumCatalog: {
     fontSize: 12,
     color: '#888',
     marginTop: 2,
