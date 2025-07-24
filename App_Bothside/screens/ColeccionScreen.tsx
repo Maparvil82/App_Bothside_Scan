@@ -235,7 +235,11 @@ export default function ColeccionScreen({ user }: { user: User }) {
               <Text style={styles.albumTitle}>{item.title}</Text>
               <Text style={styles.albumArtist}>{item.artist || 'Artista desconocido'}</Text>
               <Text style={styles.albumInfo}>{item.label || 'Sello desconocido'} • {item.release_year || 'Año desconocido'}</Text>
-              <Text style={styles.albumCatalog}>Nº Catálogo: {item.catalog_no || 'Nº catálogo desconocido'}</Text>
+              <Text style={styles.albumCatalog}>
+                Nº Catálogo: {item.catalog_no || 'Nº catálogo desconocido'}
+                {' • '}
+                {item.styles && item.styles.length > 0 ? item.styles.join(', ') : 'Estilo desconocido'}
+              </Text>
             </View>
           </View>
         )}
