@@ -10,7 +10,7 @@ interface Album {
   id: string;
   title: string;
   artist: string | null;
-  catalog_number?: string | null;
+  catalog_no?: string | null;
   cover_url: string | null;
   release_year?: string | number | null;
   label?: string | null;
@@ -73,7 +73,7 @@ export default function ColeccionScreen({ user }: { user: User }) {
               cover_url,
               release_year,
               label,
-              catalog_number,
+              catalog_no,
               album_styles(
                 styles(name)
               )
@@ -89,7 +89,7 @@ export default function ColeccionScreen({ user }: { user: User }) {
           title: item.albums.title,
           artist: item.albums.artist,
           cover_url: item.albums.cover_url,
-          catalog_number: item.albums.catalog_number || item.albums.catalog_no,
+          catalog_no: item.albums.catalog_number || item.albums.catalog_no,
           release_year: item.albums.release_year,
           label: item.albums.label,
           styles: item.albums.album_styles?.map((s: any) => s.styles.name) || []
@@ -235,7 +235,7 @@ export default function ColeccionScreen({ user }: { user: User }) {
               <Text style={styles.albumTitle}>{item.title}</Text>
               <Text style={styles.albumArtist}>{item.artist || 'Artista desconocido'}</Text>
               <Text style={styles.albumInfo}>{item.label || 'Sello desconocido'} • {item.release_year || 'Año desconocido'}</Text>
-              <Text style={styles.albumCatalog}>{item.catalog_number || 'Nº catálogo desconocido'}</Text>
+              <Text style={styles.albumCatalog}>Nº Catálogo: {item.catalog_no || 'Nº catálogo desconocido'}</Text>
             </View>
           </View>
         )}
