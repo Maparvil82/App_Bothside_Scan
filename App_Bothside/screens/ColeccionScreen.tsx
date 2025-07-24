@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, SafeAreaView, TextInput } from 'react-native';
 import { supabase } from '../supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
@@ -16,6 +16,7 @@ export default function ColeccionScreen({ user }: { user: User }) {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const fetchCollection = async () => {
@@ -83,13 +84,38 @@ export default function ColeccionScreen({ user }: { user: User }) {
     );
   }
 
+  // Filtrar álbumes según el texto de búsqueda
+  const filteredAlbums = albums.filter(album => {
+    const searchLower = search.toLowerCase();
+    return (
+      album.title.toLowerCase().includes(searchLower) ||
+      (album.artist && album.artist.toLowerCase().includes(searchLower)) ||
+      (album.label && album.label.toLowerCase().includes(searchLower))
+    );
+  });
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <Text style={styles.title}>Mi Colección</Text>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Buscar por título, artista o sello..."
+        value={search}
+        onChangeText={setSearch}
+        placeholderTextColor="#aaa"
+        autoCapitalize="none"
+        autoCorrect={false}
+        clearButtonMode="while-editing"
+      />
       <FlatList
-        data={albums}
+        data={filteredAlbums}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 64 }}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', marginTop: 32 }}>
+            <Text style={{ color: '#888' }}>No se encontraron discos.</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={styles.albumCard}>
             <Image
@@ -145,5 +171,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
     marginTop: 2,
+  },
+  searchInput: {
+    height: 50,
+    borderColor: '#e0e0e0',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    marginHorizontal: 12,
+    marginBottom: 10,
+    backgroundColor: '#fafafa',
+    fontSize: 16,
+    color: '#222',
   },
 }); 
