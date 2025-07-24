@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, SafeAreaView, TextInput, Platform, Modal, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, SafeAreaView, TextInput, Platform, Modal, TouchableOpacity, Pressable, Alert, RefreshControl } from 'react-native';
 import { ActionSheetIOS } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +24,9 @@ export default function ColeccionScreen({ user }: { user: User }) {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'year' | 'label' | 'title' | 'artist' | 'style'>('recent');
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const sortOptions = [
     { label: 'Recientes', value: 'recent' },
@@ -58,49 +61,96 @@ export default function ColeccionScreen({ user }: { user: User }) {
     setModalVisible(false);
   };
 
-  useEffect(() => {
-    const fetchCollection = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const { data, error: queryError } = await supabase
-          .from('user_collection')
-          .select(`
-            albums!inner(
-              id,
-              title,
-              artist,
-              cover_url,
-              release_year,
-              label,
-              catalog_no,
-              album_styles(
-                styles(name)
-              )
+  const handleDeleteAlbum = (albumId: string) => {
+    Alert.alert('Eliminar álbum', '¿Estás seguro de que quieres eliminar este álbum de tu lista?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+        try {
+          const { error } = await supabase
+            .from('user_collection')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('album_id', albumId);
+          if (error) throw error;
+          await fetchCollection();
+          Alert.alert('Eliminado', 'Álbum eliminado de tu colección');
+        } catch (err: any) {
+          Alert.alert('Error', err.message || 'No se pudo eliminar el álbum');
+        }
+      }},
+    ]);
+  };
+
+  const handleLongPress = (albumId: string) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancelar', 'Eliminar de mi lista'],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleDeleteAlbum(albumId);
+          }
+        }
+      );
+    } else {
+      setSelectedAlbumId(albumId);
+      setDeleteModalVisible(true);
+    }
+  };
+
+  const fetchCollection = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: queryError } = await supabase
+        .from('user_collection')
+        .select(`
+          albums!inner(
+            id,
+            title,
+            artist,
+            cover_url,
+            release_year,
+            label,
+            catalog_no,
+            album_styles(
+              styles(name)
             )
-          `)
-          .eq('user_id', user.id)
-          .order('added_at', { ascending: false });
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('added_at', { ascending: false });
 
-        if (queryError) throw queryError;
+      if (queryError) throw queryError;
 
-        const processedAlbums = (data || []).map((item: any) => ({
-          id: item.albums.id,
-          title: item.albums.title,
-          artist: item.albums.artist,
-          cover_url: item.albums.cover_url,
-          catalog_no: item.albums.catalog_number || item.albums.catalog_no,
-          release_year: item.albums.release_year,
-          label: item.albums.label,
-          styles: item.albums.album_styles?.map((s: any) => s.styles.name) || []
-        }));
-        setAlbums(processedAlbums);
-      } catch (err: any) {
-        setError(err.message || 'Error al cargar la colección');
-      } finally {
-        setLoading(false);
-      }
-    };
+      const processedAlbums = (data || []).map((item: any) => ({
+        id: item.albums.id,
+        title: item.albums.title,
+        artist: item.albums.artist,
+        cover_url: item.albums.cover_url,
+        catalog_no: item.albums.catalog_number || item.albums.catalog_no,
+        release_year: item.albums.release_year,
+        label: item.albums.label,
+        styles: item.albums.album_styles?.map((s: any) => s.styles.name) || []
+      }));
+      setAlbums(processedAlbums);
+    } catch (err: any) {
+      setError(err.message || 'Error al cargar la colección');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchCollection();
+  };
+
+  useEffect(() => {
     fetchCollection();
   }, [user]);
 
@@ -202,6 +252,31 @@ export default function ColeccionScreen({ user }: { user: User }) {
           </View>
         </Pressable>
       </Modal>
+      {/* Modal para Android para eliminar */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setDeleteModalVisible(false)}>
+          <View style={styles.modalContent}>
+            <Text style={{ fontSize: 16, marginBottom: 16, textAlign: 'center' }}>¿Eliminar este álbum de tu lista?</Text>
+            <TouchableOpacity
+              style={[styles.modalOption, { backgroundColor: '#ffeaea', borderRadius: 8 }]}
+              onPress={() => {
+                if (selectedAlbumId) handleDeleteAlbum(selectedAlbumId);
+                setDeleteModalVisible(false);
+              }}
+            >
+              <Text style={[styles.modalOptionText, { color: 'red', fontWeight: 'bold' }]}>Eliminar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalOption} onPress={() => setDeleteModalVisible(false)}>
+              <Text style={styles.modalOptionText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={22} color="#aaa" style={styles.searchIcon} />
         <TextInput
@@ -219,29 +294,38 @@ export default function ColeccionScreen({ user }: { user: User }) {
         data={filteredAlbums}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 64 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#00b894"]} tintColor="#00b894" />
+        }
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 32 }}>
             <Text style={{ color: '#888' }}>No se encontraron discos.</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={styles.albumCard}>
-            <Image
-              source={item.cover_url ? { uri: item.cover_url } : require('../assets/adaptive-icon.png')}
-              style={styles.cover}
-              resizeMode="cover"
-            />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.albumTitle}>{item.title}</Text>
-              <Text style={styles.albumArtist}>{item.artist || 'Artista desconocido'}</Text>
-              <Text style={styles.albumInfo}>{item.label || 'Sello desconocido'} • {item.release_year || 'Año desconocido'}</Text>
-              <Text style={styles.albumCatalog}>
-                Nº Catálogo: {item.catalog_no || 'Nº catálogo desconocido'}
-                {' • '}
-                {item.styles && item.styles.length > 0 ? item.styles.join(', ') : 'Estilo desconocido'}
-              </Text>
+          <TouchableOpacity
+            onLongPress={() => handleLongPress(item.id)}
+            activeOpacity={0.85}
+            delayLongPress={350}
+          >
+            <View style={styles.albumCard}>
+              <Image
+                source={item.cover_url ? { uri: item.cover_url } : require('../assets/adaptive-icon.png')}
+                style={styles.cover}
+                resizeMode="cover"
+              />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.albumTitle}>{item.title}</Text>
+                <Text style={styles.albumArtist}>{item.artist || 'Artista desconocido'}</Text>
+                <Text style={styles.albumInfo}>{item.label || 'Sello desconocido'} • {item.release_year || 'Año desconocido'}</Text>
+                <Text style={styles.albumCatalog}>
+                  Nº Catálogo: {item.catalog_no || 'Nº catálogo desconocido'}
+                  {' • '}
+                  {item.styles && item.styles.length > 0 ? item.styles.join(', ') : 'Estilo desconocido'}
+                </Text>
+              </View>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
       />
     </SafeAreaView>
