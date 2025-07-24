@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, SafeAreaView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, SafeAreaView, TextInput, Platform, Modal, TouchableOpacity, Pressable } from 'react-native';
+import { ActionSheetIOS } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabaseClient';
 import type { User } from '@supabase/supabase-js';
@@ -18,6 +20,39 @@ export default function ColeccionScreen({ user }: { user: User }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'year' | 'label' | 'title'>('recent');
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const sortOptions = [
+    { label: 'Recientes', value: 'recent' },
+    { label: 'Año', value: 'year' },
+    { label: 'Sello', value: 'label' },
+    { label: 'Título', value: 'title' },
+  ];
+
+  const handleOpenSort = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: sortOptions.map(opt => opt.label).concat('Cancelar'),
+          cancelButtonIndex: sortOptions.length,
+          title: 'Ordenar por',
+        },
+        (buttonIndex) => {
+          if (buttonIndex !== undefined && buttonIndex < sortOptions.length) {
+            setSortBy(sortOptions[buttonIndex].value as typeof sortBy);
+          }
+        }
+      );
+    } else {
+      setModalVisible(true);
+    }
+  };
+
+  const handleSelectSort = (value: 'recent' | 'year' | 'label' | 'title') => {
+    setSortBy(value);
+    setModalVisible(false);
+  };
 
   useEffect(() => {
     const fetchCollection = async () => {
@@ -86,7 +121,7 @@ export default function ColeccionScreen({ user }: { user: User }) {
   }
 
   // Filtrar álbumes según el texto de búsqueda
-  const filteredAlbums = albums.filter(album => {
+  let filteredAlbums = albums.filter(album => {
     const searchLower = search.toLowerCase();
     return (
       album.title.toLowerCase().includes(searchLower) ||
@@ -95,9 +130,59 @@ export default function ColeccionScreen({ user }: { user: User }) {
     );
   });
 
+  // Ordenar según el criterio seleccionado
+  filteredAlbums = filteredAlbums.sort((a, b) => {
+    if (sortBy === 'recent') {
+      // Por defecto: orden de agregado (más reciente primero)
+      // No tenemos 'added_at', así que usamos el orden original (ya viene ordenado por agregado)
+      return 0;
+    }
+    if (sortBy === 'year') {
+      const aYear = a.release_year ? Number(a.release_year) : 0;
+      const bYear = b.release_year ? Number(b.release_year) : 0;
+      return bYear - aYear;
+    }
+    if (sortBy === 'label') {
+      return (a.label || '').localeCompare(b.label || '');
+    }
+    // Por defecto, título
+    return a.title.localeCompare(b.title);
+  });
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <Text style={styles.title}>Mi Colección</Text>
+      <View style={styles.filterRow}>
+        <Text style={styles.pickerLabel}>Ordenar por:</Text>
+        <TouchableOpacity style={styles.filterButton} onPress={handleOpenSort}>
+          <Ionicons name="filter" size={22} color="#222" />
+          <Text style={styles.filterButtonText}>{sortOptions.find(opt => opt.value === sortBy)?.label}</Text>
+        </TouchableOpacity>
+      </View>
+      {/* Modal para Android */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+          <View style={styles.modalContent}>
+            {sortOptions.map(opt => (
+              <TouchableOpacity
+                key={opt.value}
+                style={styles.modalOption}
+                onPress={() => handleSelectSort(opt.value as typeof sortBy)}
+              >
+                <Text style={[styles.modalOptionText, sortBy === opt.value && { fontWeight: 'bold', color: '#00b894' }]}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.modalOption} onPress={() => setModalVisible(false)}>
+              <Text style={[styles.modalOptionText, { color: 'red' }]}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={22} color="#aaa" style={styles.searchIcon} />
         <TextInput
@@ -199,5 +284,57 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     paddingLeft: 0,
     borderWidth: 0,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginBottom: 8,
+    justifyContent: 'space-between',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  filterButtonText: {
+    marginLeft: 6,
+    fontSize: 15,
+    color: '#222',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    minWidth: 220,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  modalOption: {
+    paddingVertical: 10,
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: '#222',
+    textAlign: 'center',
+  },
+  pickerLabel: {
+    fontSize: 15,
+    color: '#555',
+    marginRight: 8,
   },
 }); 
