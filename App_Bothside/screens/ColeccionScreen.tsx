@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, ActivityIndicator, SafeAreaView, TextInput } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
@@ -97,16 +98,19 @@ export default function ColeccionScreen({ user }: { user: User }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <Text style={styles.title}>Mi Colección</Text>
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Buscar por título, artista o sello..."
-        value={search}
-        onChangeText={setSearch}
-        placeholderTextColor="#aaa"
-        autoCapitalize="none"
-        autoCorrect={false}
-        clearButtonMode="while-editing"
-      />
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={22} color="#aaa" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar por título, artista o sello..."
+          value={search}
+          onChangeText={setSearch}
+          placeholderTextColor="#aaa"
+          autoCapitalize="none"
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+        />
+      </View>
       <FlatList
         data={filteredAlbums}
         keyExtractor={item => item.id}
@@ -172,16 +176,28 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 2,
   },
-  searchInput: {
-    height: 50,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
     borderColor: '#e0e0e0',
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 14,
     marginHorizontal: 12,
     marginBottom: 10,
-    backgroundColor: '#fafafa',
+    height: 50,
+    paddingHorizontal: 8,
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    height: 50,
     fontSize: 16,
     color: '#222',
+    backgroundColor: 'transparent',
+    paddingLeft: 0,
+    borderWidth: 0,
   },
 }); 
