@@ -24,7 +24,9 @@ export default function HomeScreen({ user, onLogout }: { user: User; onLogout: (
         },
       })}
     >
-      <Tab.Screen name="Colección" component={ColeccionScreen} />
+      <Tab.Screen name="Colección">
+        {() => <ColeccionScreen user={user} />}
+      </Tab.Screen>
       <Tab.Screen name="Añadir" component={AddDiscoScreen} />
       <Tab.Screen name="Escanear" component={ScanStickyScreen} />
       <Tab.Screen name="Perfil">
