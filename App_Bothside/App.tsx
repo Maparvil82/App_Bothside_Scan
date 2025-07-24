@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
+// import { Ionicons } from '@expo/vector-icons'; // Solo si usas iconos aquí directamente
 
 const Stack = createNativeStackNavigator();
 

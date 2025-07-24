@@ -2,45 +2,10 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import type { User } from '@supabase/supabase-js';
-import { View, Text, Button, StyleSheet } from 'react-native';
-
-function ColeccionScreen() {
-  return (
-    <View style={styles.center}>
-      <Text style={styles.title}>Mi Colección</Text>
-      {/* Aquí irá la tabla de discos */}
-    </View>
-  );
-}
-
-function AddDiscoScreen() {
-  return (
-    <View style={styles.center}>
-      <Text style={styles.title}>Añadir Disco</Text>
-      {/* Aquí irá el formulario para añadir un nuevo disco */}
-    </View>
-  );
-}
-
-function ScanStickyScreen() {
-  return (
-    <View style={styles.center}>
-      <Text style={styles.title}>Escanear Sticky</Text>
-      {/* Aquí irá la funcionalidad de escaneo */}
-    </View>
-  );
-}
-
-function PerfilScreen({ user, onLogout }: { user: User; onLogout: () => void }) {
-  return (
-    <View style={styles.center}>
-      <Text style={styles.title}>Perfil</Text>
-      <Text>{user.email}</Text>
-      <Button title="Cerrar sesión" onPress={onLogout} />
-      {/* Aquí irá la configuración y el avatar */}
-    </View>
-  );
-}
+import ColeccionScreen from './ColeccionScreen';
+import AddDiscoScreen from './AddDiscoScreen';
+import ScanStickyScreen from './ScanStickyScreen';
+import PerfilScreen from './PerfilScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -67,9 +32,4 @@ export default function HomeScreen({ user, onLogout }: { user: User; onLogout: (
       </Tab.Screen>
     </Tab.Navigator>
   );
-}
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 24, marginBottom: 20 },
-}); 
+} 
