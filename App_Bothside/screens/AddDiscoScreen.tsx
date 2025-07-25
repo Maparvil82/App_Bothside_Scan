@@ -4,6 +4,10 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import axios from 'axios';
 import { supabase } from '../supabaseClient';
 import { DISCOGS_TOKEN } from './DiscogsAuthConfig';
+import { registerRootComponent } from 'expo';
+import App from '../App';
+
+registerRootComponent(App);
 
 function ManualTab() {
   const [artist, setArtist] = useState('');
