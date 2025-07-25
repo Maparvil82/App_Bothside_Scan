@@ -31,6 +31,25 @@ function ManualTab() {
       .trim();
   }
 
+  // Función para obtener el artista de una versión
+  async function fetchArtistForVersion(version: any) {
+    if (version.artist) return version.artist;
+    if (version.artists && Array.isArray(version.artists) && version.artists[0]?.name) return version.artists[0].name;
+    // Si no viene, hacer petición extra
+    if (version.id) {
+      try {
+        const { data } = await axios.get(`https://api.discogs.com/releases/${version.id}`);
+        if (data.artists && Array.isArray(data.artists) && data.artists[0]?.name) {
+          return data.artists[0].name;
+        }
+      } catch (e) {
+        // ignorar error
+      }
+    }
+    return 'Artista no disponible';
+  }
+
+  // Modificar handleSearch para poblar el campo artista en cada versión
   const handleSearch = async () => {
     setError('');
     setVersions([]);
@@ -78,13 +97,18 @@ function ManualTab() {
       const versionsUrl = `https://api.discogs.com/masters/${exact.master_id}/versions`;
       const { data: versionsData } = await axios.get(versionsUrl, { params: { per_page: 50, token: DISCOGS_TOKEN } });
       const VINYL_KEYWORDS = ['vinyl', 'lp', '12"', '7"', '10"'];
-      const vinyls = (versionsData.versions || []).filter((v: any) => {
+      let vinyls = (versionsData.versions || []).filter((v: any) => {
         if (!v.format) return false;
         const formats = Array.isArray(v.format) ? v.format : [v.format];
         return formats.some((f: string) =>
           VINYL_KEYWORDS.some(keyword => f.toLowerCase().includes(keyword))
         );
       });
+      // Obtener artista para cada versión
+      vinyls = await Promise.all(vinyls.map(async (v: any) => {
+        v._artist = await fetchArtistForVersion(v);
+        return v;
+      }));
       setVersions(vinyls);
       setShowVersions(true);
       if (vinyls.length === 0) setError('No se encontraron ediciones en vinilo.');
@@ -168,8 +192,17 @@ function ManualTab() {
               />
             )}
             <View style={styles.previewInfo}>
-              <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 6 }}>{selectedVersion.title}</Text>
-              <Text style={{ color: '#555' }}>{selectedVersion.year} • {selectedVersion.country}</Text>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 6 }}>
+                {selectedVersion.title && (selectedVersion.title.includes(' - ') || selectedVersion.title.includes(' / '))
+                  ? selectedVersion.title.split(/[-\/]/)[1]?.trim()
+                  : selectedVersion.title}
+              </Text>
+              <Text style={{ color: '#555' }}>
+                {selectedVersion._artist || 'Artista no disponible'}
+              </Text>
+              <Text style={{ color: '#888' }}>
+                Año edición: {selectedVersion.released ? selectedVersion.released.substring(0, 4) : (selectedVersion.year || '—')}
+              </Text>
               <Text style={{ color: '#888' }}>
                 {Array.isArray(selectedVersion.label) ? selectedVersion.label.join(', ') : selectedVersion.label || ''}
               </Text>
@@ -202,8 +235,17 @@ function ManualTab() {
                     />
                   )}
                   <View style={styles.resultInfo}>
-                    <Text style={{ fontWeight: 'bold' }}>{item.title}</Text>
-                    <Text style={{ color: '#555' }}>{item.year} • {item.country}</Text>
+                    <Text style={{ fontWeight: 'bold' }}>
+                      {item.title && (item.title.includes(' - ') || item.title.includes(' / '))
+                        ? item.title.split(/[-\/]/)[1]?.trim()
+                        : item.title}
+                    </Text>
+                    <Text style={{ color: '#555' }}>
+                      {item._artist || 'Artista no disponible'}
+                    </Text>
+                    <Text style={{ color: '#888' }}>
+                      Año edición: {item.released ? item.released.substring(0, 4) : (item.year || '—')}
+                    </Text>
                     <Text style={{ color: '#888' }}>
                       {Array.isArray(item.label) ? item.label.join(', ') : item.label || ''}
                     </Text>
