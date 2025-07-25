@@ -127,36 +127,29 @@ function ManualTab() {
   const handleSave = async () => {
     if (!selectedVersion) return;
     try {
-      const { data: existing } = await supabase
-        .from('albums')
-        .select('id')
-        .eq('id', selectedVersion.id)
-        .single();
-      if (!existing) {
-        const { error: insertError } = await supabase.from('albums').insert({
-          id: selectedVersion.id,
-          title: selectedVersion.title,
-          artist: selectedVersion.artist,
-          cover_url: selectedVersion.thumb,
-          release_year: selectedVersion.year,
-          label: selectedVersion.label,
-          catalog_no: selectedVersion.catno,
-        });
-        if (insertError) throw insertError;
-      }
-      if (!userId) throw new Error('No se pudo obtener el usuario.');
-      const { error: userColError } = await supabase.from('user_collection').insert({
-        user_id: userId,
-        album_id: selectedVersion.id,
+      const { data, error } = await supabase.functions.invoke('save-discogs-release', {
+        body: {
+          discogsReleaseId: Number(selectedVersion.id),
+          userId: userId
+        }
       });
-      if (userColError) throw userColError;
+      if (error) {
+        // ALERT TEMPORAL DE DEPURACIÓN
+        Alert.alert('Depuración', `userId: ${userId}\n\ndata: ${JSON.stringify(data)}\n\nerror: ${JSON.stringify(error)}`);
+        let errorMsg = error.message || '';
+        // Si la función devuelve un body con mensaje de error, mostrarlo
+        if (error.details) errorMsg += `\n${error.details}`;
+        if (data && typeof data === 'object' && data.error) errorMsg += `\n${data.error}`;
+        throw new Error(errorMsg || 'Error desconocido en función Supabase');
+      }
       Alert.alert('Éxito', 'Álbum de vinilo añadido a tu colección');
       setSelectedVersion(null);
       setVersions([]);
       setArtist('');
       setAlbum('');
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'No se pudo guardar el álbum');
+      // Mostrar el mensaje de error completo
+      Alert.alert('Error', err.message || JSON.stringify(err) || 'No se pudo guardar el álbum');
     }
   };
 
