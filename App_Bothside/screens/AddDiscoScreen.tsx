@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TextInput, Button, FlatList, ActivityIndicator, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TextInput, Button, FlatList, ActivityIndicator, TouchableOpacity, Alert, ScrollView, Image } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import axios from 'axios';
 import { supabase } from '../supabaseClient';
@@ -159,11 +159,24 @@ function ManualTab() {
       {/* Previsualización de versión seleccionada */}
       {selectedVersion && !showVersions && (
         <View style={styles.previewCard}>
-          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 6 }}>{selectedVersion.title}</Text>
-          <Text style={{ color: '#555' }}>{selectedVersion.year} • {selectedVersion.country}</Text>
-          <Text style={{ color: '#888' }}>{selectedVersion.label?.join(', ')}</Text>
-          <Text style={{ color: '#888' }}>Catálogo: {selectedVersion.catno}</Text>
-          <Text style={{ color: '#888' }}>Formato: {selectedVersion.format}</Text>
+          <View style={styles.previewHeader}>
+            {selectedVersion.thumb && (
+              <Image 
+                source={{ uri: selectedVersion.thumb }} 
+                style={styles.albumCover}
+                resizeMode="cover"
+              />
+            )}
+            <View style={styles.previewInfo}>
+              <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 6 }}>{selectedVersion.title}</Text>
+              <Text style={{ color: '#555' }}>{selectedVersion.year} • {selectedVersion.country}</Text>
+              <Text style={{ color: '#888' }}>
+                {Array.isArray(selectedVersion.label) ? selectedVersion.label.join(', ') : selectedVersion.label || ''}
+              </Text>
+              <Text style={{ color: '#888' }}>Catálogo: {selectedVersion.catno}</Text>
+              <Text style={{ color: '#888' }}>Formato: {selectedVersion.format}</Text>
+            </View>
+          </View>
           <Button title="Ver otras versiones" onPress={() => setShowVersions(true)} color="#888" />
           <Button title="Guardar en mi colección" onPress={handleSave} color="#00b894" />
         </View>
@@ -180,13 +193,24 @@ function ManualTab() {
                 style={[styles.resultCard, selectedVersion?.id === item.id && { borderColor: '#00b894', borderWidth: 2 }]}
                 onPress={() => handleSelectVersion(item)}
               >
-                <Text style={{ fontWeight: 'bold' }}>{item.title}</Text>
-                <Text style={{ color: '#555' }}>{item.year} • {item.country}</Text>
-                <Text style={{ color: '#888' }}>
-                  {Array.isArray(item.label) ? item.label.join(', ') : item.label || ''}
-                </Text>
-                <Text style={{ color: '#888' }}>Catálogo: {item.catno}</Text>
-                <Text style={{ color: '#888' }}>Formato: {item.format}</Text>
+                <View style={styles.resultHeader}>
+                  {item.thumb && (
+                    <Image 
+                      source={{ uri: item.thumb }} 
+                      style={styles.resultAlbumCover}
+                      resizeMode="cover"
+                    />
+                  )}
+                  <View style={styles.resultInfo}>
+                    <Text style={{ fontWeight: 'bold' }}>{item.title}</Text>
+                    <Text style={{ color: '#555' }}>{item.year} • {item.country}</Text>
+                    <Text style={{ color: '#888' }}>
+                      {Array.isArray(item.label) ? item.label.join(', ') : item.label || ''}
+                    </Text>
+                    <Text style={{ color: '#888' }}>Catálogo: {item.catno}</Text>
+                    <Text style={{ color: '#888' }}>Formato: {item.format}</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             )}
             style={{ width: '100%' }}
@@ -263,5 +287,33 @@ const styles = StyleSheet.create({
     borderColor: '#00b894',
     borderWidth: 1.5,
     alignItems: 'center',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+    marginBottom: 12,
+  },
+  albumCover: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  previewInfo: {
+    flex: 1,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  resultAlbumCover: {
+    width: 60,
+    height: 60,
+    borderRadius: 6,
+    marginRight: 10,
+  },
+  resultInfo: {
+    flex: 1,
   },
 }); 
